@@ -82,22 +82,6 @@ Aegis deliberately distinguishes between execution tool failures and quality/ver
 * **Recovery Mechanism:** The orchestrator delegates the objection back to the **writer-agent’s persistent session** (`environment_id`, `previous_interaction_id`) with the exact auditor critique. The writer removes the unsupported metric, updates `/report.md`, and resubmits to the auditor.
 * **Outcome:** The auditor re-evaluates the revised draft, verifies all claims against findings, and returns `APPROVED`, transitioning the step to `RECOVERED` (or `NEEDS_HUMAN_REVIEW` if rejected twice).
 
----
-
-## 3. Judging Bar Requirement Mapping (Copy-Pasteable for Kaggle)
-
-| Judging Bar Dimension | Hackathon Requirement | Aegis Implementation & Code Location | Evidence & Verification |
-| :--- | :--- | :--- | :--- |
-| **1. Stateful Execution** | Context preserved across multi-turn interactions without re-sending history. | Reuses `environment_id` and `previous_interaction_id` on subsequent calls in `orchestrator.py` (`AegisInteractionsClient.create_interaction`). | Sandbox state, files, and conversation memory persist across turns in both Loop 1 and Loop 2. |
-| **2. Multi-Agent Collaboration** | Autonomous hand-offs between specialized agents, not prompt gluing. | 4 distinct agents provisioned via Agents API (`create_agents.py`), orchestrated sequentially with specialized toolsets (`research` -> `analyst` -> `writer` -> `auditor`). | Each agent performs a dedicated role using distinct capabilities (web search, Python sandbox, filesystem write, pure reasoning). |
-| **3. Planning & Deterministic Pipeline** | Coordinated multi-stage workflow with branching recovery paths. | `AegisOrchestrator.run_pipeline` in `orchestrator.py` structures a deterministic pipeline with conditional state branching for tool errors and audit rejections. | Predictable, auditable workflow execution that guarantees all 4 stages conclude with verified artifacts. |
-| **4. Delegation & Agent Handoff** | Subagent task delegation based on specialized capability. | Auditor delegates revision critique back to writer agent session; orchestrator delegates quantitative angle to analyst. | Bidirectional agent coordination where auditor’s rejection drives writer’s in-session code revision. |
-| **5. Tool Use** | Deep integration with Google Search, Code Execution, and Filesystem. | `research-agent` uses `google_search` + `url_context`; `analyst-agent` executes Python code; `writer-agent` writes `/report.md` via `filesystem`. | Tools declared in `AGENT_SPECS` in `create_agents.py` and invoked in remote sandbox environments. |
-| **6. Long-Horizon State Tracking** | Persistent audit trail demoing end-to-end mission evolution. | `LedgerManager` in `orchestrator.py` records every transition (`timestamp`, `agent`, `status`, `note`) into `ledger.json` in real time. | `ledger.json` provides machine-readable, chronological proof of state changes (`RUNNING` -> `FAILED` -> `RECOVERED` -> `DONE`). |
-| **7. Failure Recovery (Tool/Data)** | Autonomous error handling when a tool call or external resource fails. | Loop 1 in `orchestrator.py`: catches missing file exception, diagnoses root cause, and re-invokes analyst in the same environment. | Transition from `analyst-agent: FAILED` to `analyst-agent: RECOVERED` in `ledger.json` without pipeline crash. |
-| **8. Quality Assurance & Verification** | Self-correcting loop preventing hallucinations and ungrounded claims. | Loop 2 in `orchestrator.py`: `auditor-agent` validates draft against ground-truth research, triggers in-session writer revision, and re-audits. | Transition from `auditor-agent: FAILED` to `auditor-agent: RECOVERED` once revised `/report.md` passes verification. |
-
----
 
 ## 4. Setup & Installation
 
